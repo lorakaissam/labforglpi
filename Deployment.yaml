@@ -1,9 +1,6 @@
-apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mariadb-glpi-deployment
-  labels:
-    app: mariadb-glpi
 spec:
   replicas: 1
   selector:
@@ -15,121 +12,47 @@ spec:
         app: mariadb-glpi
     spec:
       containers:
-      - name: mariadb
-        image: mariadb:10.5  # Specify a stable version
-        resources:
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mariadb-secret
-              key: root-password
-        - name: MYSQL_DATABASE
-          value: "glpi"
-        - name: MYSQL_USER
-          value: "glpi"
-        - name: MYSQL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mariadb-secret
-              key: glpi-password
-        ports:
-        - containerPort: 3306
-        volumeMounts:
-        - name: mariadb-data
-          mountPath: /var/lib/mysql
-        livenessProbe:
-          tcpSocket:
-            port: 3306
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          tcpSocket:
-            port: 3306
-          initialDelaySeconds: 10
-          periodSeconds: 5
-      - name: glpi
-        image: diouxx/glpi
-        resources:
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-        env:
-        - name: GLPI_DB_HOST
-          value: "mariadb"
-        - name: GLPI_DB_NAME
-          value: "glpi"
-        - name: GLPI_DB_USER
-          value: "glpi"
-        - name: GLPI_DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mariadb-secret
-              key: glpi-password
-        ports:
-        - containerPort: 80
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 10
-          periodSeconds: 5
-      volumes:
-      - name: mariadb-data
-        persistentVolumeClaim:
-          claimName: mariadb-pvc
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: mariadb-pv
-spec:
-  capacity:
-    storage: 5Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: standard  # Le même storageClassName que dans le PVC
-  hostPath:
-    path: /data/mariadb  # Chemin local sur le nœud où les données seront stockées
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mariadb-pvc
-  labels:
-    app: mariadb-glpi
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
-  storageClassName: standard  # Assurez-vous que cela correspond à celui du PV
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mariadb-secret
-type: Opaque
-data:
-  root-password: cm9vdA==
-  glpi-password: cm9vdA==
+    containers:
+    - name: mariadb
+      image: mariadb:latest
+      resources:
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+        requests:
+          memory: "256Mi"
+          cpu: "250m"
+      env:
+      - name: MYSQL_ROOT_PASSWORD
+        value: "root"
+      - name: MYSQL_DATABASE
+        value: "glpi"
+      - name: MYSQL_USER
+        value: "glpi"
+      - name: MYSQL_PASSWORD
+        value: "root"
+      ports:
+      - containerPort: 3306
+    - name: glpi
+      image: diouxx/glpi:latest
+      resources:
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+        requests:
+          memory: "256Mi"
+          cpu: "250m"
+      env:
+      - name: GLPI_DB_HOST
+        value: "mariadb"
+      - name: GLPI_DB_NAME
+        value: "glpi"
+      - name: GLPI_DB_USER
+        value: "glpi"
+      - name: GLPI_DB_PASSWORD
+        value: "root"
+      ports:
+      - containerPort: 80
 ---
 apiVersion: v1
 kind: Service
@@ -142,4 +65,3 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
-  type: NodePort  # Use NodePort for external access
