@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb-glpi-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb-glpi
+  template:
+    metadata:
+      labels:
+        app: mariadb-glpi
+    spec:
+      containers:
+      - name: mariadb
+        image: mariadb:latest
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "root"
+        - name: MYSQL_DATABASE
+          value: "glpi"
+        - name: MYSQL_USER
+          value: "glpi"
+        - name: MYSQL_PASSWORD
+          value: "root"
+        ports:
+        - containerPort: 3306
+      - name: glpi
+        image: diouxx/glpi:latest
+        env:
+        - name: GLPI_DB_HOST
+          value: "mariadb"
+        - name: GLPI_DB_NAME
+          value: "glpi"
+        - name: GLPI_DB_USER
+          value: "glpi"
+        - name: GLPI_DB_PASSWORD
+          value: "root"
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glpi-service
+spec:
+  selector:
+    app: mariadb-glpi
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
